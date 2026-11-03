@@ -1,0 +1,802 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Brújula Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: una herramienta de trabajo en etapas. Barra de etapas arriba; en "Tablero", catálogo a la izquierda y la escalera de resultados (insumo → impacto) a la derecha. */
+:root{
+  --paper:#F2F4F6; --surface:#FFFFFF; --ink:#152033; --muted:#5A6577; --line:#D7DDE5;
+  --accent:#2340C4; --accent-soft:#E3E8FA; --accent-ink:#FFFFFF;
+  --good:#1D7A52; --good-soft:#E1F2EA; --bad:#B93C28; --bad-soft:#FBE7E3; --warn:#9A6514; --warn-soft:#FBF0DC;
+  --l-impacto:#2340C4; --l-resultado:#4A62D4; --l-producto:#8496E2; --l-insumo:#B8C3EE;
+  --shadow:0 1px 2px rgba(21,32,51,.06),0 4px 14px rgba(21,32,51,.05);
+  --f-display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0E1420; --surface:#162032; --ink:#E5EAF2; --muted:#9AA6B8; --line:#2A3649;
+  --accent:#8FA3FF; --accent-soft:#1E2A4E; --accent-ink:#0E1420;
+  --good:#52C48E; --good-soft:#123326; --bad:#F2806B; --bad-soft:#3A1C17; --warn:#E5B45C; --warn-soft:#382A12;
+  --l-impacto:#8FA3FF; --l-resultado:#7186E6; --l-producto:#5163B5; --l-insumo:#384683;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0E1420; --surface:#162032; --ink:#E5EAF2; --muted:#9AA6B8; --line:#2A3649;
+  --accent:#8FA3FF; --accent-soft:#1E2A4E; --accent-ink:#0E1420;
+  --good:#52C48E; --good-soft:#123326; --bad:#F2806B; --bad-soft:#3A1C17; --warn:#E5B45C; --warn-soft:#382A12;
+  --l-impacto:#8FA3FF; --l-resultado:#7186E6; --l-producto:#5163B5; --l-insumo:#384683;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 14px rgba(0,0,0,.25); color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:16px;padding-block:10px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:8px;margin-right:auto}
+.brand b{font-family:var(--f-display);font-stretch:112%;font-weight:800;font-size:19px;letter-spacing:-.01em}
+.brand span{font-size:12px;color:var(--muted)}
+.steps{display:flex;gap:4px;flex-wrap:wrap}
+.steps button{border:1px solid transparent;background:none;padding:6px 10px;border-radius:999px;font-size:13px;color:var(--muted);cursor:pointer;display:flex;gap:6px;align-items:center}
+.steps button .n{font-family:var(--f-mono);font-size:11px;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line)}
+.steps button[aria-current="step"]{color:var(--ink);border-color:var(--line);background:var(--paper)}
+.steps button[aria-current="step"] .n{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.steps button.done .n{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.steps button:disabled{opacity:.45;cursor:not-allowed}
+.facil{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer}
+.facil[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+
+main{padding-block:28px 64px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
+h1{font-size:clamp(28px,4.2vw,44px);font-weight:800;font-stretch:108%;line-height:1.05;letter-spacing:-.02em}
+h2{font-size:22px;font-weight:700;font-stretch:105%;letter-spacing:-.01em}
+h3{font-size:16px;font-weight:700}
+p{margin:0}
+.eyebrow{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lede{font-size:17px;max-width:64ch;color:var(--ink)}
+.muted{color:var(--muted)}
+.stack{display:flex;flex-direction:column;gap:16px}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px}
+.btn{border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.nav{display:flex;justify-content:space-between;gap:12px;margin-top:24px;flex-wrap:wrap}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;padding:2px 8px;border-radius:999px;background:var(--paper);border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.tag.good{background:var(--good-soft);color:var(--good);border-color:transparent}
+.tag.bad{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.tag.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* Caso */
+.case{display:grid;grid-template-columns:1.25fr 1fr;gap:24px;margin-top:20px}
+.case>*{min-width:0}
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:18px}
+.facts div{background:var(--surface);padding:12px 14px}
+.facts b{display:block;font-family:var(--f-display);font-stretch:110%;font-size:24px;font-weight:800}
+.facts span{font-size:12.5px;color:var(--muted)}
+.components{display:grid;gap:10px;margin-top:18px}
+.comp{border-left:3px solid var(--accent);padding:4px 0 4px 12px}
+.objs{display:grid;gap:10px}
+.obj{display:flex;gap:12px;align-items:flex-start;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:14px;cursor:pointer}
+.obj input{margin-top:4px;accent-color:var(--accent)}
+.obj:has(input:checked){border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset;background:var(--accent-soft)}
+.obj b{display:block}
+label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
+input[type=text],textarea,select{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:9px 11px;font-size:15px;width:100%}
+textarea{min-height:84px;resize:vertical}
+
+/* Teoría de cambio */
+.chain{display:grid;gap:10px;margin-top:20px}
+.link{display:grid;grid-template-columns:1fr 200px;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.link>*{min-width:0}
+.link.ok{border-color:var(--good)}
+.link.ko{border-color:var(--bad)}
+.link .fb{grid-column:1/-1;font-size:13px}
+.assume{display:grid;gap:8px;margin-top:10px}
+
+/* Tablero */
+.board{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;margin-top:20px;align-items:start}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.filters button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 11px;font-size:12.5px;cursor:pointer}
+.filters button[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.pool{display:grid;gap:8px}
+.mcard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;grid-template-columns:1fr auto;gap:6px 12px}
+.mcard>*{min-width:0}
+.mcard.on{border-color:var(--accent);background:var(--accent-soft)}
+.mcard h3{font-size:15px}
+.mcard .desc{grid-column:1/-1;font-size:13.5px;color:var(--muted)}
+.mcard .meta{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+.mcard details{grid-column:1/-1;font-size:13px}
+.mcard summary{cursor:pointer;color:var(--accent);font-size:12.5px}
+.add{border:1px solid var(--accent);background:var(--surface);color:var(--accent);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600;cursor:pointer;align-self:start;white-space:nowrap}
+.mcard.on .add{background:var(--accent);color:var(--accent-ink)}
+.add:disabled{opacity:.35;cursor:not-allowed}
+.side{position:sticky;top:calc(env(safe-area-inset-top,0px) + 72px);display:flex;flex-direction:column;gap:14px}
+.budget{display:flex;flex-direction:column;gap:6px}
+.bar{height:10px;border-radius:999px;background:var(--paper);border:1px solid var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:999px;transition:width .25s}
+.bar.over i{background:var(--bad)}
+.ladder{display:grid;gap:6px}
+.rung{display:grid;grid-template-columns:94px 1fr;gap:10px;align-items:stretch}
+.rung .lv{border-radius:8px;padding:8px 10px;font-family:var(--f-display);font-weight:700;font-stretch:105%;font-size:13px;color:#fff;display:flex;flex-direction:column;justify-content:center}
+.rung .lv small{font-family:var(--f-body);font-weight:400;font-size:11px;opacity:.85}
+.rung[data-l="impacto"] .lv{background:var(--l-impacto)}
+.rung[data-l="resultado"] .lv{background:var(--l-resultado)}
+.rung[data-l="producto"] .lv{background:var(--l-producto)}
+.rung[data-l="insumo"] .lv{background:var(--l-insumo);color:var(--ink)}
+.rung .slot{border:1px dashed var(--line);border-radius:8px;padding:6px;display:flex;flex-wrap:wrap;gap:6px;min-height:44px;align-content:flex-start;background:var(--surface)}
+.chip{display:inline-flex;gap:6px;align-items:center;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:4px 6px 4px 8px;font-size:12.5px}
+.chip button{border:none;background:none;cursor:pointer;color:var(--muted);padding:0 2px;font-size:14px;line-height:1}
+.empty{font-size:12px;color:var(--muted);padding:6px}
+.lens{display:grid;gap:8px}
+.note{font-size:13.5px;border-radius:8px;padding:9px 12px;display:flex;gap:8px;align-items:flex-start}
+.note::before{content:"";flex:0 0 8px;height:8px;border-radius:50%;margin-top:6px;background:currentColor}
+.note.warn{background:var(--warn-soft);color:var(--warn)}
+.note.bad{background:var(--bad-soft);color:var(--bad)}
+.note.good{background:var(--good-soft);color:var(--good)}
+.note.info{background:var(--accent-soft);color:var(--accent)}
+.note span{color:var(--ink)}
+
+/* Diagrama de teoría de cambio */
+.toc{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;margin-top:20px}
+.toc-goal{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:14px}
+.toc-row{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:22px;position:relative}
+.toc-box{position:relative;border-radius:10px;padding:12px;background:var(--paper);border:1px solid var(--line);display:flex;flex-direction:column;gap:8px;min-width:0}
+.toc-box h3{font-size:13px;font-stretch:108%;text-transform:uppercase;letter-spacing:.04em;color:#fff;margin:-12px -12px 0;padding:8px 12px;border-radius:9px 9px 0 0}
+.toc-box[data-l="insumo"] h3{background:var(--l-insumo);color:var(--ink)}
+.toc-box[data-l="actividad"] h3{background:var(--muted)}
+.toc-box[data-l="producto"] h3{background:var(--l-producto)}
+.toc-box[data-l="resultado"] h3{background:var(--l-resultado)}
+.toc-box[data-l="impacto"] h3{background:var(--l-impacto)}
+.toc-box p{font-size:13px;line-height:1.4}
+.toc-box:not(:last-child)::after{content:"";position:absolute;right:-18px;top:50%;width:14px;height:14px;border-top:2px solid var(--muted);border-right:2px solid var(--muted);transform:translateY(-50%) rotate(45deg)}
+.toc-miss{font-size:11.5px;color:var(--warn)}
+.toc-metrics{display:flex;flex-direction:column;gap:4px;border-top:1px dashed var(--line);padding-top:8px}
+.toc-metrics .chip{font-size:11.5px;background:var(--surface)}
+.toc-assume{margin-top:16px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:22px}
+.toc-assume div{grid-column:3/5;border:1.5px dashed var(--warn);border-radius:10px;padding:10px 12px;font-size:13px;background:var(--warn-soft);position:relative}
+.toc-assume div::before{content:"";position:absolute;left:50%;top:-17px;height:16px;border-left:1.5px dashed var(--warn)}
+.toc-assume b{color:var(--warn);display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;font-family:var(--f-mono);font-weight:500}
+/* Recomendaciones */
+.recs{display:grid;gap:10px}
+.rec{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:8px;padding:12px 14px;background:var(--surface)}
+.rec.do{border-left-color:var(--bad)} .rec.tune{border-left-color:var(--warn)} .rec.keep{border-left-color:var(--good)} .rec.info{border-left-color:var(--accent)}
+.rec b{display:block;margin-bottom:2px}
+.rec p{font-size:13.5px;color:var(--muted)}
+.rec .k{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.rec.do .k{color:var(--bad)} .rec.tune .k{color:var(--warn)} .rec.keep .k{color:var(--good)} .rec.info .k{color:var(--accent)}
+
+/* Resultados */
+.res{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:20px;margin-top:20px;align-items:start}
+.score{display:flex;align-items:flex-end;gap:14px}
+.score b{font-family:var(--f-display);font-stretch:118%;font-size:76px;line-height:.9;font-weight:800;letter-spacing:-.03em}
+.score span{color:var(--muted);padding-bottom:8px}
+.arch{font-family:var(--f-display);font-size:24px;font-weight:700;margin-top:8px}
+.dims{display:grid;gap:10px;margin-top:16px}
+.dim{display:grid;grid-template-columns:150px 1fr 58px;gap:10px;align-items:center;font-size:13.5px}
+.dim .mono{text-align:right;font-size:12.5px}
+.code{font-family:var(--f-mono);font-size:11.5px;word-break:break-all;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px;max-height:96px;overflow:auto}
+
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:20px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.kpi b{font-family:var(--f-display);font-stretch:112%;font-size:34px;font-weight:800;line-height:1}
+.kpi span{font-size:13px;color:var(--muted)}
+.quotes{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:12px}
+.quote{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;font-size:14.5px;min-width:0}
+.scale{display:flex;gap:8px;margin-top:4px}
+.sc{width:44px;height:40px;border:1px solid var(--line);background:var(--surface);border-radius:8px;font-weight:600;cursor:pointer;font-family:var(--f-mono)}
+.sc.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.scale-l{display:flex;justify-content:space-between;max-width:252px;font-size:12px}
+.tens{display:grid;gap:6px;margin-top:4px}
+.tens .obj{padding:9px 12px;font-size:14px;color:var(--ink)}
+.chart-panel{margin-top:20px}
+.chart-sub{font-size:13.5px;margin-top:4px;margin-bottom:12px}
+.mtx-wrap{overflow-x:auto}
+.mtx{width:100%;min-width:480px;height:auto;display:block}
+.res-mtx{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}
+.res .chart-panel{margin-top:0}
+.mtx .qbad{fill:var(--bad-soft)} .mtx .qgood{fill:var(--good-soft)} .mtx .qn{fill:var(--paper)}
+.mtx rect{stroke:var(--surface);stroke-width:3}
+.mtx .ql{font:700 14px var(--f-display);fill:var(--ink)} .mtx .qs{font:12px var(--f-body);fill:var(--muted)}
+.mtx .ax{font:11px var(--f-mono);fill:var(--muted)} .mtx .axt{font:12px var(--f-body);fill:var(--muted)}
+.mtx .dot{fill:var(--accent);stroke:var(--surface);stroke-width:2} .mtx .dl{font:600 12px var(--f-body);fill:var(--ink)}
+.heat{min-width:640px;font-size:13px}
+.heat th{font-size:10.5px;white-space:normal;vertical-align:bottom}
+.heat td{text-align:center} .heat td:first-child{text-align:left}
+.hc{font-family:var(--f-mono);font-weight:600}
+.hc.l0{background:var(--surface)} .hc.l1{background:var(--accent-soft)} .hc.l2{background:color-mix(in srgb,var(--accent) 45%,var(--surface));color:var(--ink)} .hc.l3{background:var(--accent);color:var(--accent-ink)}
+.hc.l0{box-shadow:inset 0 0 0 1px var(--line)}
+.heat tfoot td{font-family:var(--f-mono);font-size:12px;font-weight:600;border-top:2px solid var(--line)}
+.hf.zero{color:var(--bad)} .hf.low{color:var(--warn)}
+.tens-chart{display:grid;gap:12px}
+.tr{display:grid;grid-template-columns:minmax(0,1fr) 28px;gap:4px 10px;align-items:center}
+.tr .tl{grid-column:1/-1;font-size:13.5px}
+.tr .tb{height:14px;background:var(--paper);border-radius:999px;overflow:hidden;border:1px solid var(--line)}
+.tr .tb i{display:block;height:100%;background:var(--accent);border-radius:999px}
+.tr .tn{text-align:right;font-size:13px}
+.tr .tavg{grid-column:1/-1;font-size:12px;color:var(--muted)}
+/* Comparación */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:760px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500}
+tr:last-child td{border-bottom:none}
+.freq{display:grid;gap:6px}
+.freq div{display:grid;grid-template-columns:220px 1fr 28px;gap:10px;align-items:center;font-size:13px}
+.freq .bar{height:8px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:8px;font-size:14px;z-index:20}
+
+@media (max-width:900px){
+  .case,.board,.res{grid-template-columns:1fr}
+  .toc-row{grid-template-columns:1fr;gap:22px}
+  .toc-box:not(:last-child)::after{right:auto;left:50%;top:auto;bottom:-17px;transform:translateX(-50%) rotate(135deg)}
+  .toc-assume{grid-template-columns:1fr}
+  .toc-assume div{grid-column:1}
+  .toc-assume div::before{display:none}
+  .side{position:static}
+  .link{grid-template-columns:1fr}
+}
+@media (max-width:520px){
+  .kpis{grid-template-columns:1fr 1fr}
+  .facts{grid-template-columns:1fr 1fr}
+  .dim{grid-template-columns:110px 1fr 50px}
+  .freq div{grid-template-columns:130px 1fr 24px}
+  .rung{grid-template-columns:78px 1fr}
+  .score b{font-size:60px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<style>body{margin:0;-webkit-font-smoothing:antialiased}img{max-width:100%}</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><b>Brújula Lab</b><span>Laboratorio de métricas · Learning Design</span></div>
+    <nav class="steps" id="steps" aria-label="Etapas"></nav>
+    <button class="facil" id="facil" aria-pressed="false">Tablero de la clase</button>
+  </div>
+</header>
+<main class="wrap" id="app"></main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ---------- Datos del caso ---------- */
+const OBJS = {
+  A:{short:"Productividad temprana",q:"¿Llegan antes los ejecutivos nuevos a su meta comercial?",goal:"Reducir el tiempo hasta la productividad de los ejecutivos nuevos de 6 a 4 meses."},
+  B:{short:"Calidad del asesoramiento",q:"¿Asesoran mejor a los clientes?",goal:"Reducir a la mitad los errores de asesoramiento sobre coberturas en el primer año."},
+  C:{short:"Costo del onboarding",q:"¿Cuesta menos formar a cada ejecutivo?",goal:"Bajar 25 % el costo total de onboarding por ejecutivo, sin perder calidad."}
+};
+const LEVELS = [
+  {id:"impacto",name:"Impacto",hint:"cambio institucional"},
+  {id:"resultado",name:"Resultado",hint:"cambio en las personas"},
+  {id:"producto",name:"Producto",hint:"lo que entrega y se usa"},
+  {id:"insumo",name:"Insumo",hint:"lo que el sistema necesita"}
+];
+const LAYERS = {
+  calidad:"Calidad de las respuestas", adopcion:"Uso", experiencia:"Experiencia y confianza",
+  productividad:"Productividad y costo", resultados:"Resultados", riesgo:"Riesgo y supervisión"
+};
+const DATA = {disp:"Dato disponible", inst:"Hay que instrumentar", est:"Requiere un estudio", cual:"Relato (cualitativo)"};
+
+const M = [
+ {id:"fidelidad",n:"Respuestas correctas y con fuente",d:"Cada semana se revisan 50 respuestas: ¿lo que dice el asistente está en el documento que cita?",ly:"calidad",lv:"producto",c:12,data:"inst",fr:"Semanal",w:{A:1,B:3,C:0},lim:"Hay que acordar una rúbrica y que la apliquen personas, al menos al principio."},
+ {id:"tareas",n:"Tareas completadas por el agente",d:"% de planes de onboarding que el agente arma y agenda.",ly:"calidad",lv:"producto",c:4,data:"disp",fr:"Diaria",w:{A:1,B:0,C:1},gameable:true,counter:["costo","intervencion"],lim:"Completar no es hacer bien: un plan inútil también cuenta como completado."},
+ {id:"costo",n:"Costo por tarea bien hecha",d:"Gasto del agente y horas de mentor, dividido por las tareas que no hubo que rehacer.",ly:"productividad",lv:"producto",c:5,data:"inst",fr:"Mensual",w:{A:0,B:0,C:3},lim:"Hay que acordar qué cuenta como «bien hecha»; si no, vuelve a ser costo por tarea."},
+ {id:"intervencion",n:"Casos que corrige un mentor",d:"% de respuestas o planes que un mentor tiene que corregir o rehacer.",ly:"riesgo",lv:"producto",c:4,data:"disp",fr:"Semanal",w:{A:1,B:2,C:2},lim:"Ambigua: que baje a cero también puede significar que nadie está revisando."},
+ {id:"wau",n:"Usuarios activos por semana",d:"Ejecutivos que usaron el asistente al menos una vez en la semana.",ly:"adopcion",lv:"producto",c:3,data:"disp",fr:"Semanal",w:{A:1,B:1,C:1},lim:"Uso no es valor: dice que lo abren, no que les sirve."},
+ {id:"consultas",n:"Total de consultas",d:"Cantidad de preguntas hechas al asistente.",ly:"adopcion",lv:"producto",c:2,data:"disp",fr:"Diaria",w:{A:0,B:0,C:0},vanity:true,counter:["fidelidad","errores"],lim:"Sube tanto si el asistente es útil como si responde mal y hay que volver a preguntar."},
+ {id:"cursos",n:"Cursos completados",d:"Módulos de e-learning de producto terminados por los ejecutivos nuevos.",ly:"adopcion",lv:"producto",c:2,data:"disp",fr:"Mensual",w:{A:1,B:0,C:0},vanity:true,counter:["aprendizaje","errores"],lim:"Mide el paso por el contenido. Completar no es aprender."},
+ {id:"csat",n:"Satisfacción con la respuesta",d:"Pulgar arriba o abajo después de cada respuesta.",ly:"experiencia",lv:"producto",c:3,data:"disp",fr:"Continua",w:{A:1,B:1,C:0},vanity:true,counter:["fidelidad","errores","confianza"],lim:"Las respuestas fluidas y seguras gustan aunque estén mal."},
+ {id:"confianza",n:"Confianza calibrada",d:"Prueba con errores sembrados: ¿los ejecutivos verifican cuando corresponde?",ly:"experiencia",lv:"resultado",c:12,data:"est",fr:"Trimestral",w:{A:1,B:3,C:0},lim:"Mide comportamiento y no opinión, pero hay que diseñar la prueba."},
+ {id:"ahorro",n:"Tiempo ahorrado (según los usuarios)",d:"Encuesta: «¿Cuántas horas por semana te ahorra el asistente?»",ly:"productividad",lv:"resultado",c:3,data:"disp",fr:"Mensual",w:{A:1,B:0,C:1},vanity:true,counter:["ttp","costo_onb","costo"],lim:"La percepción engaña: en un estudio de METR (2025), quienes usaban IA creían ir 20 % más rápido y fueron 19 % más lentos."},
+ {id:"ttp",n:"Tiempo hasta la productividad",d:"Meses hasta alcanzar la meta comercial, comparado con las cohortes 2025 sin asistente.",ly:"resultados",lv:"resultado",c:15,data:"inst",fr:"Trimestral",w:{A:3,B:1,C:1},lim:"Otras cosas cambian a la vez (mercado, mentores): sin comparación, la atribución es débil."},
+ {id:"errores",n:"Errores de asesoramiento en auditoría",d:"Muestra mensual de 100 llamadas auditadas por Calidad Comercial.",ly:"resultados",lv:"resultado",c:14,data:"inst",fr:"Mensual",w:{A:1,B:3,C:0},lim:"La auditoría ya existe, pero hay que ampliar la muestra y saber quién usa el asistente."},
+ {id:"aprendizaje",n:"Desempeño sin el asistente",d:"Evaluación práctica a los 60 días, sin acceso al asistente: ¿aprenden o dependen?",ly:"resultados",lv:"resultado",c:10,data:"est",fr:"Por cohorte",w:{A:2,B:2,C:0},lim:"Es la «L» de MEL: mide aprendizaje, no uso."},
+ {id:"reclamos",n:"Reclamos por mala información",d:"Reclamos de clientes clasificados como «información incorrecta».",ly:"resultados",lv:"impacto",c:6,data:"disp",fr:"Mensual",w:{A:0,B:3,C:0},lim:"Llega tarde (de 3 a 6 meses) y depende de que el cliente reclame."},
+ {id:"rotacion",n:"Rotación temprana",d:"Ejecutivos que se van antes de los 6 meses.",ly:"resultados",lv:"impacto",c:4,data:"disp",fr:"Trimestral",w:{A:2,B:0,C:2},lim:"Tiene muchas causas; la IA es una entre varias."},
+ {id:"costo_onb",n:"Costo total de onboarding",d:"Plataforma, asistente, horas de mentores y meses improductivos, por ejecutivo.",ly:"productividad",lv:"impacto",c:9,data:"inst",fr:"Trimestral",w:{A:1,B:0,C:3},lim:"Requiere acordar con Finanzas cómo se valoran las horas de mentor."},
+ {id:"sesgo",n:"Brecha entre sucursales",d:"Calidad de respuesta y uso, mirados por sucursal, región y producto.",ly:"riesgo",lv:"producto",c:8,data:"inst",fr:"Mensual",w:{A:1,B:1,C:1},lim:"El promedio esconde: el asistente puede funcionar bien en la capital y mal en el interior."},
+ {id:"msc",n:"Historias de cambio más significativo",d:"Cada mes, ejecutivos y mentores cuentan un cambio; un comité elige una historia y explica por qué.",ly:"resultados",lv:"resultado",c:6,data:"cual",fr:"Mensual",w:{A:1,B:1,C:1},lim:"No cuantifica; muestra qué cambia y qué valora la gente, incluido lo que nadie previó."},
+ {id:"brinkerhoff",n:"Casos de éxito y de fracaso",d:"Entrevistas en las 2 sucursales que más mejoraron y en las 2 que menos.",ly:"resultados",lv:"impacto",c:9,data:"cual",fr:"Semestral",w:{A:2,B:2,C:2},lim:"No dice cuánto, dice por qué. Muy útil para decidir cómo escalar."}
+];
+const MI = Object.fromEntries(M.map(m=>[m.id,m]));
+const BUDGET = 100, MAXM = 7;
+
+const TDC = [
+ {id:"t1",txt:"Una base de 2.300 documentos de producto, pólizas y normativa conectada al asistente.",ok:"insumo"},
+ {id:"t2",txt:"Los ejecutivos nuevos consultan al asistente durante su primer trimestre y el agente les arma un plan de 30 días.",ok:"actividad"},
+ {id:"t3",txt:"Respuestas con cita a la fuente y planes de onboarding completados.",ok:"producto"},
+ {id:"t4",txt:"Los ejecutivos asesoran con precisión y autonomía antes que las cohortes anteriores.",ok:"resultado"},
+ {id:"t5",txt:"Más pólizas bien vendidas, menos reclamos y menos rotación temprana en la red de sucursales.",ok:"impacto"}
+];
+const TDC_ORDER = ["t3","t5","t1","t4","t2"];
+const TDC_LV = {insumo:"Insumos",actividad:"Actividades",producto:"Productos",resultado:"Resultados",impacto:"Impacto"};
+const ASSUME = [
+ {id:"a1",t:"Los ejecutivos tienen tiempo para usar el asistente.",s:1,fb:"Es un supuesto real, pero si falla lo verías enseguida en el uso."},
+ {id:"a2",t:"Las respuestas son correctas y los ejecutivos verifican cuando corresponde.",s:2,fb:"Es el eslabón más frágil: si falla, los números de uso siguen subiendo mientras empeora el asesoramiento."},
+ {id:"a3",t:"La plataforma está disponible el 99 % del tiempo.",s:0,fb:"Es una condición técnica que Tecnología ya monitorea; no es lo que pone en riesgo el cambio."},
+ {id:"a4",t:"A los ejecutivos les gusta la tecnología.",s:0,fb:"El gusto no es el mecanismo del cambio. Se puede querer una herramienta que da respuestas equivocadas."}
+];
+
+/* ---------- Estado ---------- */
+const KEY="brujula-lab-v2";
+const fresh=()=>({saveId:null,saveState:null,savedAt:null,step:0,team:"",obj:null,tdc:{},tdcChecked:false,tdcReviewed:false,assume:null,sel:[],refl:{a:"",b:"",c:0,t:""},filter:"all"});
+let S=fresh(), view="game";
+try{const raw=localStorage.getItem(KEY); if(raw){S=Object.assign(fresh(),JSON.parse(raw)); S.refl=Object.assign({a:"",b:"",c:0,t:""},S.refl);}}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const $=sel=>document.querySelector(sel);
+function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2200)}
+
+/* ---------- Cálculos ---------- */
+const spent=()=>S.sel.reduce((a,id)=>a+MI[id].c,0);
+const has=id=>S.sel.includes(id);
+const q=id=>"«"+MI[id].n+"»";
+const coreFor=o=>M.filter(m=>m.w[o]===3&&(m.lv==="resultado"||m.lv==="impacto"));
+
+/* Avisos breves mientras arman el tablero */
+function lens(){
+  if(!S.sel.length) return [{t:"info",x:"Elijan métricas del catálogo. Acá van a ver qué ve y qué no ve su tablero."}];
+  const out=[]; const lv=new Set(S.sel.map(id=>MI[id].lv)), ly=new Set(S.sel.map(id=>MI[id].ly));
+  if(!lv.has("resultado")&&!lv.has("impacto")) out.push({t:"bad",x:"Todo su tablero mide lo que el sistema hace. Nada mide lo que cambia en las personas o en la institución."});
+  else if(!S.sel.some(id=>MI[id].w[S.obj]>=2&&(MI[id].lv==="resultado"||MI[id].lv==="impacto"))) out.push({t:"bad",x:`Ninguna métrica responde directamente su pregunta: «${OBJS[S.obj].q}»`});
+  S.sel.forEach(id=>{const m=MI[id]; if((m.vanity||m.gameable)&&!m.counter.some(has)) out.push({t:"warn",x:`${q(id)} puede mejorar mientras lo importante empeora.`});});
+  if(!ly.has("calidad")) out.push({t:"warn",x:"Nada dice si las respuestas son correctas."});
+  if(!ly.has("riesgo")) out.push({t:"warn",x:"Nada avisa si algo sale mal."});
+  if(!out.length) out.push({t:"good",x:"Va bien: cubre la escalera y tiene contrapesos."});
+  return out;
+}
+/* Recomendaciones finales: concretas, con qué agregar o sacar */
+function recs(){
+  const R=[]; const sel=S.sel.map(id=>MI[id]); const o=S.obj;
+  const lv=new Set(sel.map(m=>m.lv)), ly=new Set(sel.map(m=>m.ly));
+  const core=sel.filter(m=>m.w[o]===3&&(m.lv==="resultado"||m.lv==="impacto"));
+  if(core.length) R.push({k:"keep",t:"Su tablero responde la pregunta del comité",x:`${core.map(m=>q(m.id)).join(" y ")} ${core.length>1?"miden":"mide"} directamente lo que se propusieron: «${OBJS[o].goal}»`});
+  else R.push({k:"do",t:"Sumen una métrica que responda su pregunta",x:`Su pregunta es «${OBJS[o].q}». Las que la responden son ${coreFor(o).map(m=>q(m.id)).join(" o ")}. Sin una de ellas, el comité no va a poder decidir.`});
+  sel.forEach(m=>{ if((m.vanity||m.gameable)&&!m.counter.some(has)) R.push({k:"tune",t:`${q(m.id)} necesita un contrapeso`,x:`${m.lim} Pónganla al lado de ${m.counter.map(q).slice(0,2).join(" o ")}${m.vanity?", o sáquenla y liberen "+m.c+" puntos":""}.`}); });
+  if(!ly.has("calidad")) R.push({k:"do",t:"Midan si las respuestas son correctas",x:"Con IA, que la usen no dice que acierte. Sumen «Respuestas correctas y con fuente»: es el supuesto crítico de la teoría de cambio."});
+  if(!ly.has("riesgo")) R.push({k:"do",t:"Sumen una señal de alerta",x:"«Casos que corrige un mentor» o «Brecha entre sucursales» les avisan cuando algo sale mal y para quién."});
+  const ad=sel.filter(m=>m.ly==="adopcion"); if(ad.length>=2) R.push({k:"tune",t:"Tienen más de una métrica de uso",x:`${ad.map(m=>q(m.id)).join(", ")} cuentan casi la misma historia. Con una alcanza.`});
+  if(!lv.has("impacto")&&lv.has("resultado")) R.push({k:"info",t:"No hay nada en el nivel de impacto",x:"Está bien si el horizonte es corto, pero díganlo: el comité va a preguntar por lo institucional."});
+  const est=sel.filter(m=>m.data==="est"); if(est.length) R.push({k:"info",t:"Ojo con los tiempos",x:`${est.map(m=>q(m.id)).join(" y ")} requiere${est.length>1?"n":""} un estudio: la primera lectura llega en uno o dos meses.`});
+  if(!sel.some(m=>m.data==="cual")) R.push({k:"info",t:"Falta el relato",x:"Los números dicen cuánto; las historias dicen por qué. Una sola fuente cualitativa («Historias de cambio» o «Casos de éxito y de fracaso») completa el cuadro."});
+  else R.push({k:"keep",t:"Combinan número y relato",x:"Las historias les van a mostrar lo que ninguna métrica previó."});
+  if(S.sel.length>=6) R.push({k:"info",t:`${S.sel.length} métricas`,x:"Antes de presentarlo, pregúntense de cada una: si se mueve, ¿qué decisión cambia? Si no hay respuesta, sobra."});
+  if(S.assume!=="a2") R.push({k:"info",t:"Revisen el supuesto crítico",x:"El supuesto del que depende todo es que las respuestas sean correctas y que los ejecutivos verifiquen. ¿Hay alguna métrica que lo vigile?"});
+  const order={do:0,tune:1,info:2,keep:3}; return R.sort((a,b)=>order[a.k]-order[b.k]);
+}
+function scores(){
+  const sel=S.sel.map(id=>MI[id]); const o=S.obj||"A"; const cl=x=>Math.max(0,Math.min(1,x));
+  const sumW=sel.reduce((a,m)=>a+m.w[o],0), hasCore=sel.some(m=>m.w[o]===3&&(m.lv==="resultado"||m.lv==="impacto"));
+  const zero=sel.filter(m=>m.w[o]===0).length;
+  const coh=Math.min(1,sumW/9)*0.6+(hasCore?0.4:0)-Math.max(0,zero-1)*0.1;
+  const lvs=new Set(sel.map(m=>m.lv)); const esc_=["producto","resultado","impacto"].filter(l=>lvs.has(l)).length/3;
+  const lys=new Set(sel.map(m=>m.ly)); let eq=lys.size/5; if(!lys.has("calidad")||!lys.has("riesgo")) eq=Math.min(eq,0.5);
+  let con=1; sel.forEach(m=>{if((m.vanity||m.gameable)&&!m.counter.some(has)) con-=0.35});
+  const n=sel.length; const par=n>=4&&n<=6?1:(n===3||n===7?0.7:0.3);
+  const d=[{k:"Responde la pregunta",v:cl(coh),w:30},{k:"Escalera completa",v:cl(esc_),w:20},{k:"Mira todas las capas",v:cl(eq),w:20},{k:"Tiene contrapesos",v:cl(con),w:20},{k:"Pocas y buenas",v:cl(par),w:10}];
+  return {d,total:Math.round(d.reduce((a,x)=>a+x.v*x.w,0))};
+}
+function archetype(sc){
+  const sel=S.sel.map(id=>MI[id]); const lvs=new Set(sel.map(m=>m.lv)), lys=new Set(sel.map(m=>m.ly));
+  if(sel.filter(m=>m.vanity).length>=2&&!lvs.has("resultado")&&!lvs.has("impacto")) return ["Tablero de vitrina","Muestra actividad y entusiasmo. No puede decir si algo cambió."];
+  if(!lvs.has("resultado")&&!lvs.has("impacto")) return ["Tablero de operación","Sabe mucho de cómo funciona el sistema y poco de lo que cambia en las sucursales."];
+  if(!lys.has("riesgo")&&!lys.has("calidad")) return ["Tablero optimista","Mide el valor que espera encontrar, pero no lo que puede salir mal."];
+  if(sc.total>=80) return ["Tablero para decidir","Pocas métricas, bien elegidas, que responden la pregunta y avisan a tiempo."];
+  if(sc.total>=60) return ["Tablero en buen camino","Cubre lo central; le faltan contrapesos o una capa."];
+  return ["Tablero en construcción","Todavía mide más lo fácil que lo importante."];
+}
+const tdcScore=()=>TDC.filter(t=>S.tdc[t.id]===t.ok).length;
+
+/* ---------- Diagrama de teoría de cambio ---------- */
+function tocDiagram(withMetrics){
+  const lvMap={insumo:"insumo",actividad:null,producto:"producto",resultado:"resultado",impacto:"impacto"};
+  const a=ASSUME.find(x=>x.id===S.assume);
+  return `<figure class="toc" aria-label="Teoría de cambio">
+    <div class="toc-goal"><span class="eyebrow">Teoría de cambio · Brújula IA</span><b>Objetivo: ${esc(OBJS[S.obj].goal)}</b></div>
+    <div class="toc-row">
+      ${["insumo","actividad","producto","resultado","impacto"].map(l=>{const t=TDC.find(x=>x.ok===l); const mine=Object.entries(S.tdc).find(([k,v])=>k===t.id)?.[1];
+        const ms=withMetrics&&lvMap[l]?S.sel.filter(id=>MI[id].lv===lvMap[l]):[];
+        return `<div class="toc-box" data-l="${l}"><h3>${TDC_LV[l]}</h3><p>${esc(t.txt)}</p>${mine&&mine!==l?`<span class="toc-miss">Lo habían ubicado en ${TDC_LV[mine].toLowerCase()}</span>`:""}
+        ${withMetrics?`<div class="toc-metrics">${ms.length?ms.map(id=>`<span class="chip">${esc(MI[id].n)}</span>`).join(""):`<span class="toc-miss" style="color:var(--muted)">${l==="actividad"?"Se ve en los registros de uso":"Sin métricas"}</span>`}</div>`:""}</div>`}).join("")}
+    </div>
+    <div class="toc-assume"><div><b>Supuesto crítico</b>${esc(a?a.t:"")}</div></div>
+  </figure>`;
+}
+
+/* ---------- Navegación ---------- */
+const STEPS=["El caso","Teoría de cambio","Tablero","Recomendaciones"];
+function canGo(i){ if(i===0) return true; if(i===1) return !!S.obj; if(i===2) return !!S.obj&&S.tdcChecked; if(i===3) return !!S.obj&&S.tdcChecked&&S.sel.length>=3; return false; }
+function go(i){ if(!canGo(i)) return; S.step=i; view="game"; save(); render(); window.scrollTo({top:0,behavior:"smooth"}); }
+function renderSteps(){
+  $("#steps").innerHTML=STEPS.map((s,i)=>`<button ${view==="game"&&S.step===i?'aria-current="step"':""} class="${i<S.step?"done":""}" ${canGo(i)?"":"disabled"} data-go="${i}"><span class="n">${i+1}</span>${s}</button>`).join("");
+  $("#facil").setAttribute("aria-pressed",view==="class"?"true":"false");
+}
+
+/* ---------- Vistas ---------- */
+function vCase(){
+  return `<p class="eyebrow">Caso · Academia Brújula</p>
+  <h1>Lanzaron un asistente de IA. ¿Cómo van a saber si funciona?</h1>
+  <div class="case">
+    <div class="stack">
+      <p class="lede">La aseguradora que conocieron en las clases 4 y 5 lanzó <b>Brújula IA</b> dentro de su academia corporativa. En unos meses, el comité de dirección decide si lo lleva a toda la región. Ustedes diseñan cómo se va a medir.</p>
+      <div class="facts">
+        <div><b class="mono">1.200</b><span>ejecutivos comerciales</span></div>
+        <div><b class="mono">40</b><span>sucursales, 9 en el interior</span></div>
+        <div><b class="mono">100</b><span>puntos de esfuerzo para medir</span></div>
+      </div>
+      <div class="components">
+        <div class="comp"><h3>El asistente</h3><p class="muted">Responde preguntas de los ejecutivos nuevos sobre productos, pólizas y normativa, a partir de 2.300 documentos internos.</p></div>
+        <div class="comp"><h3>El agente de onboarding</h3><p class="muted">Arma un plan de 30 días para cada ejecutivo, agenda sesiones con mentores y deriva a un mentor cuando no sabe.</p></div>
+      </div>
+    </div>
+    <div class="panel stack">
+      <label class="f" for="team">Nombre del equipo<input type="text" id="team" placeholder="Por ejemplo: Sala 3" value="${esc(S.team)}" maxlength="40"></label>
+      <div><h2>Elijan la pregunta del comité</h2><p class="muted" style="font-size:13.5px;margin-top:4px">Medir bien empieza por decidir qué merece ser medido. Elijan una sola.</p></div>
+      <div class="objs" role="radiogroup" aria-label="Pregunta de evaluación">
+        ${Object.entries(OBJS).map(([k,o])=>`<label class="obj"><input type="radio" name="obj" id="obj-${k}" value="${k}" ${S.obj===k?"checked":""}><span><b>${o.q}</b><span class="muted" style="font-size:13.5px">${o.goal}</span></span></label>`).join("")}
+      </div>
+    </div>
+  </div>
+  <div class="nav"><span class="muted" style="font-size:13px">Tiempo sugerido: 3 minutos.</span><button class="btn" data-go="1" ${S.obj?"":"disabled"}>Construir la teoría de cambio</button></div>`;
+}
+function vTdc(){
+  const allOk=TDC.every(t=>S.tdc[t.id]===t.ok);
+  if(S.tdcChecked){
+    const a=ASSUME.find(x=>x.id===S.assume);
+    return `<p class="eyebrow">Etapa 2 · Teoría de cambio</p>
+    <h1>Esta es su teoría de cambio</h1>
+    <p class="lede" style="margin-top:12px">La cadena quedó validada. Cada métrica que elijan en el próximo paso va a vigilar uno de estos casilleros.</p>
+    ${tocDiagram(false)}
+    <p class="note ${a.s===2?"good":a.s===1?"warn":"bad"}" style="margin-top:14px"><span><b>Sobre el supuesto que eligieron:</b> ${esc(a.fb)}</span></p>
+    <div class="nav"><button class="btn ghost" id="editTdc">Editar la teoría de cambio</button><button class="btn" data-go="2">Armar el tablero</button></div>`;
+  }
+  const rv=S.tdcReviewed; const okN=TDC.filter(t=>S.tdc[t.id]===t.ok).length;
+  const as=ASSUME.find(x=>x.id===S.assume);
+  return `<p class="eyebrow">Etapa 2 · Pregunta: ${esc(OBJS[S.obj].short)}</p>
+  <h1>Antes de medir, la cadena</h1>
+  <p class="lede" style="margin-top:12px">${rv?"Corrijan los eslabones marcados en rojo. Cuando la cadena esté bien, la congelan y pasan al tablero.":"Ubiquen cada enunciado en su eslabón. Después, elijan el supuesto del que depende todo."}</p>
+  ${S.sel.length?`<p class="note info" style="margin-top:12px"><span>Su tablero se mantiene: cuando vuelvan a congelar la cadena, lo encuentran como lo dejaron.</span></p>`:""}
+  <div class="chain">
+    ${TDC_ORDER.map(id=>{const t=TDC.find(x=>x.id===id); const v=S.tdc[id]||""; const cls=rv&&v?(v===t.ok?"ok":"ko"):"";
+      return `<div class="link ${cls}"><p>${esc(t.txt)}</p><select id="tdc-${id}" data-tdc="${id}" aria-label="Eslabón"><option value="">Elegí un eslabón</option>${Object.entries(TDC_LV).map(([k,n])=>`<option value="${k}" ${v===k?"selected":""}>${n}</option>`).join("")}</select>
+      ${cls==="ok"?`<p class="fb" style="color:var(--good)">Correcto.</p>`:cls==="ko"?`<p class="fb" style="color:var(--bad)">${esc(HINT[id])}</p>`:""}</div>`}).join("")}
+  </div>
+  <div class="panel" style="margin-top:16px"><h2>¿Cuál es el supuesto más crítico?</h2>
+    <div class="assume">${ASSUME.map(a=>`<label class="obj"><input type="radio" name="assume" id="as-${a.id}" value="${a.id}" ${S.assume===a.id?"checked":""}><span>${esc(a.t)}${rv&&S.assume===a.id?`<span style="display:block;margin-top:6px;font-size:13px;color:${a.s===2?"var(--good)":a.s===1?"var(--warn)":"var(--bad)"}">${esc(a.fb)}</span>`:""}</span></label>`).join("")}</div>
+  </div>
+  <div class="nav"><button class="btn ghost" data-go="0">Volver al caso</button>
+  ${!rv?`<button class="btn" id="checkTdc" ${TDC.every(t=>S.tdc[t.id])&&S.assume?"":"disabled"}>Revisar la cadena</button>`
+     :`<span class="row"><span class="tag ${allOk?"good":"warn"}">${okN} de 5 eslabones bien</span><button class="btn" id="freezeTdc" ${allOk&&S.assume?"":"disabled"}>Congelar la teoría de cambio</button></span>`}</div>`;
+}
+const HINT={
+ t1:"Es algo que el sistema necesita para funcionar, antes de que nadie lo use.",
+ t2:"Describe lo que la gente hace con el asistente y el agente: es lo que pasa, no lo que se logra.",
+ t3:"Es lo que el sistema entrega. Que exista no dice que algo cambió en las personas.",
+ t4:"Describe un cambio en cómo trabajan las personas.",
+ t5:"Es un cambio en la institución y en sus clientes, el más lejano de la cadena."
+};
+function mcard(m){
+  const on=has(m.id); const block=!on&&(spent()+m.c>BUDGET||S.sel.length>=MAXM);
+  const dtone=m.data==="disp"?"good":m.data==="est"?"warn":"";
+  return `<article class="mcard ${on?"on":""}">
+    <h3>${esc(m.n)}</h3>
+    <button class="add" data-tog="${m.id}" ${block?"disabled":""} aria-pressed="${on}">${on?"Quitar":"+ "+m.c+" pts"}</button>
+    <p class="desc">${esc(m.d)}</p>
+    <div class="meta"><span class="tag">${LAYERS[m.ly]}</span><span class="tag">${LEVELS.find(l=>l.id===m.lv).name}</span><span class="tag ${dtone}">${DATA[m.data]}</span></div>
+    <details><summary>Límite de esta métrica</summary><p style="margin-top:6px">${esc(m.lim)}</p></details>
+  </article>`;
+}
+function vBoard(){
+  const sp=spent(); const list=M.filter(m=>S.filter==="all"||m.ly===S.filter);
+  return `<p class="eyebrow">Etapa 3 · Pregunta: ${esc(OBJS[S.obj].q)}</p>
+  <h1>Armen el tablero</h1>
+  <p class="lede" style="margin-top:12px">Tienen ${BUDGET} puntos de esfuerzo y lugar para ${MAXM} métricas. No gana quien elige más: gana el tablero que responde la pregunta.</p>
+  <div class="board">
+    <section>
+      <div class="filters" role="group" aria-label="Filtrar por capa">
+        <button data-filter="all" aria-pressed="${S.filter==="all"}">Todas (${M.length})</button>
+        ${Object.entries(LAYERS).map(([k,n])=>`<button data-filter="${k}" aria-pressed="${S.filter===k}">${n}</button>`).join("")}
+      </div>
+      <div class="pool">${list.map(mcard).join("")}</div>
+    </section>
+    <aside class="side">
+      <div class="panel stack" style="gap:14px">
+        <div class="budget">
+          <div class="row" style="justify-content:space-between"><h2>Su tablero</h2><span class="mono">${sp} / ${BUDGET} pts · ${S.sel.length} / ${MAXM}</span></div>
+          <div class="bar"><i style="width:${Math.min(100,sp)}%"></i></div>
+        </div>
+        <div class="ladder">
+          ${LEVELS.map(l=>{const ms=S.sel.filter(id=>MI[id].lv===l.id);
+            return `<div class="rung" data-l="${l.id}"><div class="lv">${l.name}<small>${l.hint}</small></div><div class="slot">${ms.length?ms.map(id=>`<span class="chip">${esc(MI[id].n)}<button data-tog="${id}" aria-label="Quitar ${esc(MI[id].n)}">×</button></span>`).join(""):`<span class="empty">Sin métricas en este nivel</span>`}</div></div>`}).join("")}
+        </div>
+        <div class="lens">${lens().map(o=>`<p class="note ${o.t}"><span>${esc(o.x)}</span></p>`).join("")}</div>
+      </div>
+    </aside>
+  </div>
+  <div class="nav"><button class="btn ghost" data-go="1">Volver a la teoría de cambio</button><button class="btn" data-go="3" ${S.sel.length>=3?"":"disabled"}>Ver recomendaciones</button></div>`;
+}
+function vResults(){
+  const sc=scores(); const [an,ad]=archetype(sc); const code=teamCode(); const R=recs();
+  const K={do:"Agregar",tune:"Ajustar",info:"Para pensar",keep:"Bien"};
+  return `<p class="eyebrow">Etapa 4 · ${esc(S.team||"Equipo sin nombre")} · ${esc(OBJS[S.obj].short)}</p>
+  <h1>Su tablero sobre su teoría de cambio</h1>
+  <p class="lede" style="margin-top:12px">Cada métrica quedó ubicada en el casillero que vigila. Los casilleros vacíos son lo que no van a poder ver.</p>
+  ${tocDiagram(true)}
+  <div class="res">
+    <div class="panel">
+      <div class="score"><b class="mono">${sc.total}</b><span>de 100 · ${spent()} pts usados</span></div>
+      <p class="arch">${an}</p><p class="muted">${ad}</p>
+      <div class="dims">${sc.d.map(x=>`<div class="dim"><span>${x.k}</span><div class="bar"><i style="width:${Math.round(x.v*100)}%"></i></div><span class="mono">${Math.round(x.v*x.w)}/${x.w}</span></div>`).join("")}</div>
+    </div>
+    <div class="panel stack">
+      <h2>Recomendaciones</h2>
+      <div class="recs">${R.map(r=>`<div class="rec ${r.k}"><span class="k">${K[r.k]}</span><b>${esc(r.t)}</b><p>${esc(r.x)}</p></div>`).join("")}</div>
+      <div class="row"><button class="btn ghost" data-go="2">Ajustar el tablero</button><button class="btn ghost" id="editTdc">Editar la teoría de cambio</button></div>
+    </div>
+  </div>
+  <div class="res">
+    <div class="panel stack">
+      <h2>Reflexión del equipo</h2>
+      <div class="f"><span>¿Qué tan seguros están de que este tablero le permite al comité decidir?</span>
+        <div class="scale" role="radiogroup" aria-label="Confianza">${[1,2,3,4,5].map(n=>`<button class="sc ${S.refl.c===n?"on":""}" data-conf="${n}" aria-pressed="${S.refl.c===n}">${n}</button>`).join("")}</div>
+        <span class="scale-l"><span>Nada seguros</span><span>Muy seguros</span></span></div>
+      <div class="f"><span>¿Qué tensión pesó más al elegir las métricas?</span>
+        <div class="tens">${TENS.map(x=>`<label class="obj"><input type="radio" name="tens" value="${x.id}" ${S.refl.t===x.id?"checked":""}><span>${esc(x.t)}</span></label>`).join("")}</div></div>
+      <label class="f" for="r-a">¿Qué dejaron afuera a propósito y por qué?<textarea id="r-a" data-refl="a" maxlength="300">${esc(S.refl.a)}</textarea></label>
+      <label class="f" for="r-b">¿Qué métrica de su propia academia se parece a «Total de consultas» o «Cursos completados»?<textarea id="r-b" data-refl="b" maxlength="300">${esc(S.refl.b)}</textarea></label>
+    </div>
+    <div class="panel stack">
+      <h2>Guardar en el tablero de la clase</h2>
+      <p class="muted" style="font-size:13.5px">Cuando terminen la reflexión, guarden. Su tablero aparece en el tablero de la clase junto al de los demás equipos. Si después cambian algo, vuelvan a guardar.</p>
+      <div class="row"><button class="btn" id="saveTeam" ${canSave()?"":"disabled"}>${S.savedAt?"Guardar de nuevo":"Guardar"}</button><button class="btn ghost" id="toClass">Ver el tablero de la clase</button></div>
+      <p class="muted" id="saveHint" style="font-size:13px" ${canSave()?"hidden":""}>Para guardar, respondan las dos primeras preguntas.</p>
+      <div id="saveStatus">${saveStatusHtml()}</div>
+      <button class="btn ghost" id="reset" style="align-self:flex-start">Empezar de nuevo</button>
+      <p id="resetConfirm" hidden class="note warn"><span>Se borra el trabajo de este equipo en este navegador. <button class="btn" id="resetYes" style="padding:4px 10px;margin-left:6px">Sí, borrar</button></span></p>
+    </div>
+  </div>`;
+}
+const TENS=[
+ {id:"pts",t:"Los puntos: lo importante era caro de medir",s:"Los puntos"},
+ {id:"tiempo",t:"El tiempo: el dato iba a llegar tarde",s:"El tiempo"},
+ {id:"como",t:"No sabíamos cómo medir lo que importaba",s:"No sabíamos cómo"},
+ {id:"presion",t:"La presión por mostrar resultados rápido",s:"La presión"},
+ {id:"miedo",t:"Medir algo que podía dar mal",s:"El miedo a que dé mal"}
+];
+const canSave=()=>!!(S.refl.c&&S.refl.t);
+
+/* ---------- Tablero de la clase (compartido) ----------
+   Dónde se guarda: si SCRIPT_URL tiene la URL del Apps Script, en una Google Sheet (versión GitHub Pages).
+   Si no, y la página corre como artifact de Claude, en la base del artifact. Si no hay ninguna, queda local. */
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyzp3CL3jVVRp9PhP1przhOdd1l571cg1wllg4bj2ZMwcQrfNMvEk6HSNBU2m7Yug2f0w/exec"; // ← pegá acá la URL de la implementación del Apps Script (termina en /exec)
+let RT={mode:"none",db:null,room:null,admin:false,teams:[],status:"loading",demo:false,seen:{},timer:null,poll:null};
+function payload(){
+  const sc=scores(); const sel=S.sel.map(id=>MI[id]); const ly=new Set(sel.map(m=>m.ly));
+  if(!S.saveId) S.saveId=Math.random().toString(36).slice(2,10);
+  return {id:S.saveId,t:(S.team||"Equipo sin nombre").slice(0,40),o:S.obj,m:S.sel.slice(0,MAXM),s:sc.total,d:sc.d.map(x=>Math.round(x.v*100)),a:archetype(sc)[0],p:spent(),
+    c:S.refl.c||0,tn:S.refl.t||"",ra:S.refl.a.trim().slice(0,300),rb:S.refl.b.trim().slice(0,300),
+    g:{cal:!ly.has("calidad"),ries:!ly.has("riesgo"),resp:!sel.some(m=>m.w[S.obj]>=2&&(m.lv==="resultado"||m.lv==="impacto")),van:sel.some(m=>(m.vanity||m.gameable)&&!m.counter.some(has)),rel:!sel.some(m=>m.data==="cual")},
+    ts:Date.now()};
+}
+function clean(x){ // datos de otros: no confiables
+  if(!x||typeof x!=="object"||typeof x.id!=="string"||!/^[a-z0-9]{4,16}$/.test(x.id)||!OBJS[x.o]) return null;
+  const str=(v,n)=>typeof v==="string"?v.slice(0,n):"";
+  return {id:x.id,t:str(x.t,40)||"Equipo",o:x.o,m:Array.isArray(x.m)?x.m.filter(id=>MI[id]).slice(0,MAXM):[],s:Math.max(0,Math.min(100,+x.s||0)),
+    d:Array.isArray(x.d)?x.d.slice(0,5).map(v=>Math.max(0,Math.min(100,+v||0))):[],a:str(x.a,40),p:+x.p||0,
+    c:Math.max(0,Math.min(5,Math.round(+x.c||0))),tn:TENS.some(z=>z.id===x.tn)?x.tn:"",ra:str(x.ra,300),rb:str(x.rb,300),
+    g:x.g&&typeof x.g==="object"?{cal:!!x.g.cal,ries:!!x.g.ries,resp:!!x.g.resp,van:!!x.g.van,rel:!!x.g.rel}:{},ts:+x.ts||0};
+}
+function saveStatusHtml(){
+  const st=S.saveState;
+  if(st==="ok") return `<p class="note good"><span>Guardado. Ya aparece en el tablero de la clase.</span></p>`;
+  if(st==="room") return `<p class="note good"><span>Enviado. Aparece en el tablero de la clase mientras la persona que facilita lo tenga abierto, así que dejen esta página abierta hasta el plenario.</span></p>`;
+  if(st==="none") return `<p class="note warn"><span>No se pudo guardar. Revisen la conexión y vuelvan a tocar «Guardar». Si sigue fallando, copien este código y péguenlo en el chat de Zoom:</span></p><div class="code" id="code">${esc(teamCode())}</div><button class="btn ghost" id="copyCode" style="align-self:flex-start">Copiar código</button>`;
+  if(st==="saving") return `<p class="note info"><span>Guardando…</span></p>`;
+  return "";
+}
+async function sheetPost(body){
+  const r=await fetch(SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(body)});
+  const j=await r.json(); if(!j.ok) throw new Error(j.error||"error"); return j;
+}
+async function storeTeam(p){
+  if(RT.mode==="sheet"){ await sheetPost({action:"save",team:p}); loadSheet(); return "ok"; }
+  if(RT.mode==="claude"&&RT.db){ try{ await RT.db.doc("equipos/"+p.id).set(p); return "ok"; }catch(e){} }
+  if(RT.mode==="claude"&&RT.room){ await RT.room.presence({brujula:p}); return "room"; }
+  throw new Error("sin almacenamiento");
+}
+async function saveTeam(){
+  S.saveState="saving"; save(); render();
+  try{ S.saveState=await storeTeam(payload()); }catch(e){ S.saveState="none"; }
+  S.savedAt=Date.now(); save(); if(view==="game"&&S.step===3) render();
+}
+function teamsShown(){ return RT.demo?demoTeams():RT.teams; }
+
+/* --- Gráfico 1: lo que creen vs. lo que miden --- */
+function chartMatrix(T){
+  const W=640,H=400,L=56,R=20,Tp=20,B=46, X=v=>L+v/100*(W-L-R), Y=v=>Tp+(5-v)/4*(H-Tp-B);
+  const pts=T.filter(t=>t.c>=1);
+  const seen={}; const dots=pts.map(t=>{const k=Math.round(t.s/4)+"-"+t.c; const n=seen[k]=(seen[k]||0)+1; return {t,x:X(t.s)+(n-1)*10,y:Y(t.c)-(n-1)*10}});
+  const q=(x,y,w,h,label,sub,cls)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" class="${cls}"/><text x="${x+10}" y="${y+20}" class="ql">${label}</text><text x="${x+10}" y="${y+36}" class="qs">${sub}</text>`;
+  const mx=X(60), my=Y(3);
+  return `<svg viewBox="0 0 ${W} ${H}" class="mtx" role="img" aria-label="Matriz de confianza y puntaje por equipo">
+    ${q(L,Tp,mx-L,my-Tp,"Sobreconfianza","seguros, pero el tablero no alcanza","qbad")}
+    ${q(mx,Tp,W-R-mx,my-Tp,"Tablero para decidir","seguros y con razón","qgood")}
+    ${q(L,my,mx-L,H-B-my,"En construcción","dudan, y con razón","qn")}
+    ${q(mx,my,W-R-mx,H-B-my,"Dudan de más","el tablero es mejor de lo que creen","qn")}
+    ${[0,20,40,60,80,100].map(v=>`<text x="${X(v)}" y="${H-B+18}" class="ax" text-anchor="middle">${v}</text>`).join("")}
+    ${[1,2,3,4,5].map(v=>`<text x="${L-10}" y="${Y(v)+4}" class="ax" text-anchor="end">${v}</text>`).join("")}
+    <text x="${(L+W-R)/2}" y="${H-6}" class="axt" text-anchor="middle">Puntaje del tablero (lo que miden)</text>
+    <text x="14" y="${(Tp+H-B)/2}" class="axt" text-anchor="middle" transform="rotate(-90 14 ${(Tp+H-B)/2})">Confianza del equipo (lo que creen)</text>
+    ${dots.map(d=>`<g><circle cx="${d.x}" cy="${d.y}" r="9" class="dot"/><text x="${d.x+13}" y="${d.y+4}" class="dl">${esc(d.t.t.replace(/^Ejemplo · /,""))}</text></g>`).join("")}
+  </svg>`;
+}
+/* --- Gráfico 2: mapa de lo que miramos (equipo × capa) --- */
+function chartHeat(T){
+  const keys=Object.keys(LAYERS);
+  const cnt=t=>keys.map(k=>t.m.filter(id=>MI[id].ly===k).length);
+  const cover=keys.map((k,i)=>T.filter(t=>cnt(t)[i]>0).length);
+  const cell=n=>`<td class="hc l${Math.min(n,3)}">${n||""}</td>`;
+  return `<div class="tablewrap"><table class="heat">
+    <thead><tr><th>Equipo</th>${keys.map(k=>`<th>${LAYERS[k]}</th>`).join("")}</tr></thead>
+    <tbody>${T.map(t=>`<tr><td><b>${esc(t.t)}</b></td>${cnt(t).map(cell).join("")}</tr>`).join("")}</tbody>
+    <tfoot><tr><td>Equipos que la miran</td>${cover.map(c=>`<td class="hf ${c===0?"zero":c<T.length/2?"low":""}">${c}/${T.length}</td>`).join("")}</tr></tfoot>
+  </table></div>`;
+}
+/* --- Gráfico 3: qué pesó al elegir --- */
+function chartTens(T){
+  const rows=TENS.map(x=>{const g=T.filter(t=>t.tn===x.id); return {x,n:g.length,avg:g.length?Math.round(g.reduce((a,t)=>a+t.s,0)/g.length):null}}).sort((a,b)=>b.n-a.n);
+  const max=Math.max(1,...rows.map(r=>r.n));
+  return `<div class="tens-chart">${rows.map(r=>`<div class="tr"><span class="tl">${esc(r.x.t)}</span><div class="tb"><i style="width:${r.n/max*100}%"></i></div><span class="mono tn">${r.n}</span><span class="tavg">${r.avg==null?"":"puntaje prom. "+r.avg}</span></div>`).join("")}</div>`;
+}
+function vClass(){
+  const T=teamsShown(); const n=T.length;
+  const head=`<p class="eyebrow">Brújula Lab · Tablero de la clase</p>
+  <h1>Qué salió en las salas</h1>
+  <div class="row" style="margin-top:12px;justify-content:space-between">
+    <p class="lede">${n?`${n} ${n===1?"equipo guardó":"equipos guardaron"} su tablero. Se actualiza solo a medida que llegan los demás.`:"Todavía no guardó ningún equipo. Esta página se actualiza sola."}</p>
+    <span class="row" style="gap:8px">${liveTag()}</span>
+  </div>`;
+  if(!n) return head+`<div class="panel" style="margin-top:20px">${RT.mode==="none"?`<p>Este tablero no está conectado a ningún lugar donde guardar. La persona que facilita lo comparte en pantalla.</p>`:`<p class="muted">Cuando cada sala toque «Guardar» en la etapa de recomendaciones, su tablero aparece acá.</p>`}</div>`+adminTools()+backNav();
+  const freq={}; T.forEach(t=>t.m.forEach(id=>freq[id]=(freq[id]||0)+1));
+  const never=M.filter(m=>!freq[m.id]);
+  const cnt=k=>T.filter(t=>t.g&&t.g[k]).length;
+  const v=(c,a,b)=>c===1?a:b;
+  const over=T.filter(t=>t.c>=4&&t.s<60).length;
+  const lessons=[];
+  if(over) lessons.push(["Lo que creemos no es lo que medimos",`${over} de ${n} ${v(over,"equipo se siente muy seguro","equipos se sienten muy seguros")} con un tablero que todavía no alcanza para decidir.`]);
+  if(cnt("resp")) lessons.push(["Medir lo fácil, no lo importante",`${cnt("resp")} de ${n} ${v(cnt("resp"),"equipo no tiene","equipos no tienen")} una métrica que responda la pregunta que eligieron.`]);
+  if(cnt("cal")) lessons.push(["Gustar no es acertar",`${cnt("cal")} de ${n} ${v(cnt("cal"),"equipo no mide","equipos no miden")} si las respuestas del asistente son correctas.`]);
+  if(cnt("van")) lessons.push(["Métricas que engañan",`${cnt("van")} de ${n} ${v(cnt("van"),"equipo usa","equipos usan")} una métrica de vanidad sin contrapeso.`]);
+  if(cnt("ries")) lessons.push(["El promedio esconde",`${cnt("ries")} de ${n} ${v(cnt("ries"),"equipo no tiene","equipos no tienen")} ninguna señal de alerta.`]);
+  if(never.length) lessons.push(["Lo que nadie miró",`Ningún equipo eligió ${never.slice(0,3).map(m=>"«"+m.n+"»").join(", ")}.`]);
+  lessons.forEach(l=>l[1]=l[1].replace(/^(\d+) de (\d+) equipo /,"$1 de $2 equipos "));
+  if(!lessons.length) lessons.push(["Tableros sólidos","Todos responden su pregunta, tienen contrapesos y miran calidad y riesgo."]);
+  const refl=T.filter(t=>t.ra||t.rb);
+  return head+`
+  <div class="kpis">
+    <div class="kpi"><b class="mono">${n}</b><span>equipos</span></div>
+    <div class="kpi"><b class="mono">${Math.round(T.reduce((a,t)=>a+t.s,0)/n)}</b><span>puntaje promedio</span></div>
+    <div class="kpi"><b class="mono">${n-cnt("resp")}/${n}</b><span>responden su pregunta</span></div>
+    <div class="kpi"><b class="mono">${over}/${n}</b><span>en sobreconfianza</span></div>
+  </div>
+  <div class="res res-mtx">
+    <section class="panel chart-panel" style="min-width:0"><p class="eyebrow">Gráfico 1</p><h2>Lo que creen y lo que miden</h2>
+      <p class="muted chart-sub">Cada punto es un equipo: qué tan seguro está de su tablero frente a lo que el tablero realmente puede ver.</p>
+      <div class="mtx-wrap">${chartMatrix(T)}</div></section>
+    <div class="panel chart-panel"><h2>Qué podemos aprender</h2><div class="recs" style="margin-top:12px">${lessons.map(([k,x])=>`<div class="rec tune"><b>${esc(k)}</b><p>${esc(x)}</p></div>`).join("")}</div></div>
+  </div>
+  <section class="panel chart-panel" style="min-width:0"><p class="eyebrow">Gráfico 2</p><h2>Qué miramos y qué no</h2>
+    <p class="muted chart-sub">Métricas de cada equipo en cada capa. Las columnas vacías son los puntos ciegos del grupo.</p>${chartHeat(T)}</section>
+  <div class="res">
+    <section class="panel chart-panel"><p class="eyebrow">Gráfico 3</p><h2>Qué pesó al elegir</h2>
+      <p class="muted chart-sub">La tensión que cada equipo dijo que más le costó, con el puntaje promedio de esos tableros.</p>${chartTens(T)}</section>
+    <div class="panel chart-panel"><h2>Lo que dijeron las salas</h2><div class="stack" style="margin-top:12px;gap:10px">${refl.length?refl.map(t=>`<article class="quote"><p class="eyebrow">${esc(t.t)} · ${esc(OBJS[t.o].short)}</p>${t.ra?`<p><span class="muted">Dejaron afuera:</span> ${esc(t.ra)}</p>`:""}${t.rb?`<p><span class="muted">Su «total de consultas»:</span> ${esc(t.rb)}</p>`:""}</article>`).join(""):`<p class="muted">Todavía no hay reflexiones escritas.</p>`}</div></div>
+  </div>`+adminTools()+backNav();
+}
+function liveTag(){
+  if(RT.status==="live") return `<span class="tag good">En vivo</span>`;
+  if(RT.status==="stale") return `<span class="tag warn">Sin conexión: puede estar desactualizado</span>`;
+  if(RT.mode==="none") return `<span class="tag">Sin conexión</span>`;
+  return `<span class="tag">Conectando…</span>`;
+}
+function adminTools(){ return ""; }
+const backNav=()=>`<div class="nav"><button class="btn ghost" id="backGame">Volver al ejercicio</button></div>`;
+function demoTeams(){
+  const keep=S; const out=[];
+  [{team:"Ejemplo · Sala A",obj:"A",sel:["wau","consultas","csat","ahorro","cursos","tareas"],refl:{c:5,t:"presion",a:"Dejamos afuera la auditoría porque era cara.",b:"Las horas de capacitación por persona."}},
+   {team:"Ejemplo · Sala B",obj:"B",sel:["fidelidad","errores","intervencion","sesgo","msc"],refl:{c:3,t:"pts",a:"La satisfacción: nos pareció que engaña.",b:"El NPS de cada curso."}},
+   {team:"Ejemplo · Sala C",obj:"C",sel:["fidelidad","tareas","costo","wau","costo_onb"],refl:{c:4,t:"tiempo",a:"No medimos rotación: tiene muchas causas.",b:"Cantidad de inscriptos."}},
+   {team:"Ejemplo · Sala D",obj:"A",sel:["ttp","wau","msc","intervencion"],refl:{c:2,t:"como",a:"La confianza calibrada: no sabíamos cómo diseñar la prueba.",b:"Usuarios activos del LMS."}},
+   {team:"Ejemplo · Sala E",obj:"B",sel:["csat","consultas","wau","reclamos"],refl:{c:4,t:"pts",a:"La auditoría, por costo.",b:"Encuestas de satisfacción al final del curso."}}]
+  .forEach((d,i)=>{S=Object.assign(fresh(),d,{saveId:"demo0"+i,tdcChecked:true}); out.push(clean(payload()))});
+  S=keep; return out;
+}
+function decode(c){try{c=c.trim(); if(!c.startsWith("BRJ2.")) return null; return JSON.parse(decodeURIComponent(escape(atob(c.slice(5)))))}catch(e){return null}}
+function teamCode(){ return "BRJ2."+btoa(unescape(encodeURIComponent(JSON.stringify(payload())))); }
+
+function render(){
+  renderSteps();
+  const app=$("#app");
+  app.innerHTML=view==="class"?vClass():[vCase,vTdc,vBoard,vResults][S.step]();
+}
+function rerenderClass(){ if(view!=="class") return; const y=window.scrollY; render(); window.scrollTo(0,y); }
+
+/* ---------- Conexión ---------- */
+async function loadSheet(){
+  try{ const r=await fetch(SCRIPT_URL+"?action=list&_="+Date.now()); const j=await r.json();
+    RT.teams=(j.teams||[]).map(clean).filter(Boolean); RT.status="live"; }catch(e){ RT.status="stale"; }
+  rerenderClass();
+}
+async function initLive(){
+  if(SCRIPT_URL){
+    RT.mode="sheet";
+    loadSheet(); RT.poll=setInterval(()=>{ if(view==="class"&&!document.hidden) loadSheet(); },5000);
+    return;
+  }
+  if(!window.claude||!claude.use){RT.mode="none"; return}
+  const [db,room,user]=await Promise.all([claude.use("db"),claude.use("room"),claude.use("user")]);
+  RT.db=db; RT.room=room; RT.mode=(db||room)?"claude":"none";
+  try{RT.admin=user?await user.canEdit():false}catch(e){RT.admin=false}
+  if(!db){ rerenderClass(); return }
+  RT.timer=setTimeout(()=>{if(RT.status==="loading"){RT.status="stale"; rerenderClass();}},10000);
+  db.collection("equipos").onSnapshot(snap=>{
+    RT.teams=snap.docs.map(d=>clean(d.data())).filter(Boolean);
+    if(!snap.metadata.fromCache){RT.status="live"; clearTimeout(RT.timer);}
+    rerenderClass();
+  },()=>{RT.status="stale"; clearTimeout(RT.timer); rerenderClass();});
+  if(RT.admin&&room){ // quien facilita recoge lo que envían por presencia los equipos que no pueden escribir
+    room.onPeers(ch=>{ (ch.peers||[]).forEach(async pr=>{ const x=clean(pr.presence&&pr.presence.brujula); if(!x) return;
+      if(RT.seen[x.id]===x.ts) return; RT.seen[x.id]=x.ts; try{await db.doc("equipos/"+x.id).set(x)}catch(e){delete RT.seen[x.id]} }); });
+  }
+}
+/* ---------- Interacción ---------- */
+document.addEventListener("click",ev=>{
+  const t=ev.target.closest("button"); if(!t) return;
+  if(t.dataset.go!=null){go(+t.dataset.go);return}
+  if(t.id==="facil"||t.id==="toClass"){view=view==="class"&&t.id==="facil"?"game":"class"; render(); window.scrollTo({top:0}); if(view==="class"&&RT.mode==="sheet") loadSheet(); return}
+  if(t.dataset.tog){const id=t.dataset.tog; if(has(id)) S.sel=S.sel.filter(x=>x!==id); else if(spent()+MI[id].c<=BUDGET&&S.sel.length<MAXM) S.sel.push(id); save(); const y=window.scrollY; render(); window.scrollTo(0,y); return}
+  if(t.dataset.filter){S.filter=t.dataset.filter; save(); render(); return}
+  if(t.dataset.conf){S.refl.c=+t.dataset.conf; save(); const y=window.scrollY; render(); window.scrollTo(0,y); return}
+  if(t.id==="checkTdc"){S.tdcReviewed=true; save(); render(); return}
+  if(t.id==="freezeTdc"){S.tdcChecked=true; save(); render(); window.scrollTo({top:0,behavior:"smooth"}); return}
+  if(t.id==="editTdc"){S.tdcChecked=false; S.tdcReviewed=true; S.step=1; save(); render(); window.scrollTo({top:0,behavior:"smooth"}); return}
+  if(t.id==="saveTeam"){saveTeam(); return}
+  if(t.id==="copyCode"){const c=teamCode(); const fb=()=>{selectCode();toast("Código seleccionado: copialo con Ctrl+C")}; if(navigator.clipboard) navigator.clipboard.writeText(c).then(()=>toast("Código copiado"),fb); else fb(); return}
+  if(t.id==="reset"){$("#resetConfirm").hidden=false; return}
+  if(t.id==="resetYes"){S=fresh(); save(); render(); toast("Listo: ejercicio nuevo"); return}
+  if(t.id==="backGame"){view="game"; render(); return}
+});
+document.addEventListener("change",ev=>{
+  const t=ev.target;
+  if(t.name==="obj"){S.obj=t.value; save(); render(); return}
+  if(t.dataset.tdc){S.tdc[t.dataset.tdc]=t.value; save(); render(); return}
+  if(t.name==="assume"){S.assume=t.value; save(); render(); return}
+  if(t.name==="tens"){S.refl.t=t.value; save(); const b=$("#saveTeam"); if(b) b.disabled=!canSave(); const h=$("#saveHint"); if(h) h.hidden=canSave(); return}
+});
+document.addEventListener("input",ev=>{
+  const t=ev.target;
+  if(t.id==="team"){S.team=t.value; save(); return}
+  if(t.dataset.refl){S.refl[t.dataset.refl]=t.value; save(); return}
+});
+function selectCode(){const el=$("#code"); if(!el) return; const r=document.createRange(); r.selectNodeContents(el); const s=getSelection(); s.removeAllRanges(); s.addRange(r)}
+
+render();
+initLive();
+</script>
+
+</body>
+</html>
